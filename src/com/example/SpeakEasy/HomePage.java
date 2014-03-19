@@ -4,67 +4,52 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.StrictMode;
+import android.support.v4.app.DialogFragment;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.*;
-import com.actionbarsherlock.app.SherlockListActivity;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
-import com.amazonaws.services.simpledb.util.SimpleDBUtils;
 import com.example.SpeakEasy.tvmclient.Response;
 import com.facebook.UiLifecycleHelper;
 import com.facebook.widget.FacebookDialog;
 
-import java.util.HashMap;
-import java.util.List;
-
-public class HomePage extends SherlockListActivity {
+/**
+ * This class is reachable from any other quote feed by pressing a menu option.
+ * That option is replaced by a pencil icon, which when pressed opens a
+ * UI to submit a new quote.
+ */
+public class HomePage extends SherlockFragmentActivity {
     public static AmazonClientManager clientManager = null;
-    protected List<String> itemNames;
-    protected MySimpleArrayAdapter adapter;
-    static HomePage activity = null;
     private UiLifecycleHelper uiHelper;
-
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        clientManager = new AmazonClientManager(getSharedPreferences("speakeasySDB", Context.MODE_PRIVATE));
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setHomeButtonEnabled(true);
+        setTitle("Your Quotes");
         uiHelper = new UiLifecycleHelper(this, null);
         uiHelper.onCreate(savedInstanceState);
         setContentView(R.layout.homepage);
-        activity = this;
 
         //TODO: fix
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
-        clientManager = new AmazonClientManager(getSharedPreferences("speakeasySDB", Context.MODE_PRIVATE));
-
-        itemNames = SimpleDB.getMyQuotesItemNames(getSharedPreferences("fbInfo", Context.MODE_PRIVATE).getString("name", ""));
-
-        adapter = new MySimpleArrayAdapter(this, itemNames);
-        setListAdapter(adapter);
-
-
-    }
-
-    @Override
-    public void onListItemClick(ListView l, View v, int position, long id) {
-        Toast.makeText(HomePage.this, "Selected " + position, Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getSupportMenuInflater();
-        inflater.inflate(R.menu.edit, menu);
+        inflater.inflate(R.menu.search_with_edit, menu);
         return true;
     }
 
@@ -72,12 +57,14 @@ public class HomePage extends SherlockListActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle item selection
         switch (item.getItemId()) {
+            //Home Icon press returns to MainPage
             case android.R.id.home:
                 startActivity(new Intent(HomePage.this, MainPage.class));
                 return true;
             case R.id.search:
                 Toast.makeText(HomePage.this, "Searched", Toast.LENGTH_SHORT).show();
                 return true;
+            //Submit a new quote
             case R.id.edit:
                 final Button b = (Button) findViewById(R.id.submit);
                 final EditText quote = (EditText) findViewById(R.id.quoteText);
@@ -92,31 +79,12 @@ public class HomePage extends SherlockListActivity {
                     author.setVisibility(View.VISIBLE);
                 }
 
-                final SharedPreferences prefs = getSharedPreferences("fbInfo", Context.MODE_PRIVATE);
-
                 b.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
 
+                        selectCategories();
 
-                        String timestamp = SimpleDBUtils.encodeZeroPadding(System.currentTimeMillis() / 1000, 5);
-                        String name = prefs.getString("name", "");
-                        QuotePost q = new QuotePost(quote.getText().toString(), author.getText().toString(),
-                                name, timestamp, new String[0], 0);
-                        if (!prefs.getBoolean("quotesDomainCreated", false)) {
-                            SimpleDB.createDomain("Quotes");
-                            prefs.edit().putBoolean("quotesDomainCreated", true).commit();
-                        }
-                        SimpleDB.addQuote(q);
-                        adapter.add(name + "" + timestamp);
-                        adapter.notifyDataSetChanged();
-
-                        quote.setText("");
-                        author.setText("");
-
-                        b.setVisibility(View.GONE);
-                        quote.setVisibility(View.GONE);
-                        author.setVisibility(View.GONE);
                     }
                 });
             default:
@@ -124,16 +92,10 @@ public class HomePage extends SherlockListActivity {
         }
     }
 
-    protected void displayCredentialsIssueAndExit() {
-        AlertDialog.Builder confirm = new AlertDialog.Builder(this);
-        confirm.setTitle("Credential Problem!");
-        confirm.setMessage("AWS Credentials not configured correctly");
-        confirm.setNegativeButton("OK", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int which) {
-                HomePage.this.finish();
-            }
-        });
-        confirm.show().show();
+    //DialogFragment to select 0 or more categories
+    public void selectCategories() {
+        DialogFragment newFragment = new CategoryChooserFragment();
+        newFragment.show(getSupportFragmentManager(), "categories");
     }
 
     protected void displayErrorAndExit(Response response) {
@@ -198,8 +160,7 @@ public class HomePage extends SherlockListActivity {
         uiHelper.onDestroy();
     }
 
-
-        private class ValidateCredentialsTask extends
+    private class ValidateCredentialsTask extends
             AsyncTask<Class<?>, Void, com.example.SpeakEasy.tvmclient.Response> {
 
         Class<?> cls;
@@ -220,63 +181,4 @@ public class HomePage extends SherlockListActivity {
 
     }
 
-    public class MySimpleArrayAdapter extends ArrayAdapter<String> {
-        private final Context context;
-        private List<String> quoteItemNames;
-
-        public MySimpleArrayAdapter(Context context, List<String> values) {
-            super(context, R.layout.home_item_view, values);
-            this.context = context;
-            this.quoteItemNames = values;
-        }
-
-        @Override
-        public void notifyDataSetChanged() {
-            super.notifyDataSetChanged();
-        }
-
-        @Override
-        public void add(String object) {
-            final Object mLock = new Object();
-            synchronized (mLock) {
-                if (quoteItemNames == null) {
-                    quoteItemNames.add(object);
-                } else {
-                    quoteItemNames.add(0, object);
-                }
-            }
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            LayoutInflater inflater = (LayoutInflater) context
-                    .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            View rowView = inflater.inflate(R.layout.home_item_view, parent, false);
-            final TextView quoteText = (TextView) rowView.findViewById(R.id.itemText);
-            TextView quoteAuthor = (TextView) rowView.findViewById(R.id.itemAuthor);
-            ImageView fbShare = (ImageView) rowView.findViewById(R.id.fbshare);
-            Button fav = (Button) rowView.findViewById(R.id.favorite);
-
-            fav.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Toast.makeText(HomePage.this, "Stop trying to like you own post", Toast.LENGTH_SHORT).show();
-                }
-            });
-
-            fbShare.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    FBUtil.shareToFB(getApplicationContext(), HomePage.this, quoteText.getText().toString(), uiHelper);
-                }
-            });
-
-            HashMap<String, String> attrMap = SimpleDB.getAttributesForItem("Quotes", quoteItemNames.get(position));
-            quoteAuthor.setText(attrMap.get("author"));
-            quoteText.setText(attrMap.get("quoteText"));
-            fav.setText(attrMap.get("favorites"));
-
-            return rowView;
-        }
-    }
 }

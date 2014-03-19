@@ -4,7 +4,8 @@
         android:layout_height="wrap_content"
         xmlns:android="http://schemas.android.com/apk/res/android"
         android:background="@drawable/rectangle"
-        android:paddingTop="5dp">
+        android:paddingTop="5dp"
+        android:padding="2dp">
 
     <ImageView
             android:layout_width="30dp"
@@ -63,12 +64,12 @@
             android:focusable="false"
             android:paddingTop="5dp"
             android:layout_alignParentLeft="true"
-            android:layout_alignBottom="@+id/favorite"/>
+            android:layout_alignBottom="@+id/homeFavorite"/>
 
     <Button
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:id="@+id/favorite"
+            android:id="@+id/homeFavorite"
             android:background="@drawable/greyheart"
             android:contentDescription="@string/homeHeart"
             android:paddingRight="5dp"
@@ -77,6 +78,7 @@
             android:paddingBottom="5dp"
             android:focusable="false"
             android:clickable="true"
+            android:text="0"
             android:textSize="15sp"/>
 
 </RelativeLayout>

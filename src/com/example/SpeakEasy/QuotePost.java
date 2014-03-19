@@ -1,66 +1,42 @@
 package com.example.SpeakEasy;
 
+import java.util.ArrayList;
+
+/**
+ * Class representing a single Quote
+ */
 public class QuotePost {
     private String quoteText, authorName, fbName, timestamp;
-    private int favorites;
-    private String[] tags;
+    private ArrayList<Integer> categories;
 
     public String getQuoteText() {
         return quoteText;
     }
 
-    public void setQuoteText(String quoteText) {
-        this.quoteText = quoteText;
-    }
 
     public String getAuthorName() {
         return authorName;
-    }
-
-    public void setAuthorName(String authorName) {
-        this.authorName = authorName;
     }
 
     public String getFbName() {
         return fbName;
     }
 
-    public void setFbName(String fbName) {
-        this.fbName = fbName;
-    }
-
     public String getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
+    public ArrayList<Integer> getCategories() {
+        return categories;
     }
 
-    public String[] getTags() {
-        return tags;
-    }
-
-    public void setTags(String[] tags) {
-        this.tags = tags;
-    }
-
-    public int getFavorites() {
-        return favorites;
-    }
-
-    public void setFavorites(int favorites) {
-        this.favorites = favorites;
-    }
-
-    public QuotePost(String quoteText, String authorName, String fbName, String timestamp, String[] tags, int favorites) {
+   public QuotePost(String quoteText, String authorName, String fbName, String timestamp, ArrayList<Integer> categories) {
 
         this.quoteText = quoteText;
         this.authorName = authorName;
         this.fbName = fbName;
         this.timestamp = timestamp;
-        this.tags = tags;
-        this.favorites = favorites;
+        this.categories = categories;
 
     }
 }

@@ -1,33 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-                xmlns:tools="http://schemas.android.com/tools"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                tools:context=".Mainpage"
-                android:background="@android:color/background_light">
+<android.support.v4.widget.DrawerLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/drawer_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        >
+    <!-- The main content view -->
+    <RelativeLayout
+            android:id="@+id/content_frame"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/whitebg">
 
+    </RelativeLayout>
+
+    <!-- The navigation drawer -->
     <ListView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@android:id/list"
-            android:dividerHeight = "1.0sp"
-            android:paddingTop="10dp"
-            android:footerDividersEnabled="true"
-            android:headerDividersEnabled="true"
-            android:paddingStart="5dp"
-            android:paddingEnd="5dp"
-            android:divider="@drawable/line"
-            android:layout_below="@+id/newsFeed"
-            android:layout_alignParentLeft="true"/>
+            android:id="@+id/left_drawer"
+            android:layout_width="150dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="left"
+            android:choiceMode="singleChoice"
+            android:divider="@android:color/darker_gray"
+            android:dividerHeight="1dp"
+            android:background="@android:color/background_light">
+    </ListView>
 
-    <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceLarge"
-            android:text="@string/livefeed"
-            android:id="@+id/newsFeed"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentLeft="true"/>
 
-</RelativeLayout>
+</android.support.v4.widget.DrawerLayout>

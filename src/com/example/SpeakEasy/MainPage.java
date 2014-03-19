@@ -2,59 +2,99 @@ package com.example.SpeakEasy;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.StrictMode;
+import android.support.v4.app.ActionBarDrawerToggle;
+import android.support.v4.app.Fragment;
+import android.support.v4.widget.DrawerLayout;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.*;
-import com.actionbarsherlock.app.SherlockListActivity;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.Toast;
+import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
-import com.amazonaws.services.simpledb.model.Item;
-import com.amazonaws.services.simpledb.model.SelectRequest;
+import com.example.SpeakEasy.categoryFragments.*;
 import com.facebook.UiLifecycleHelper;
 import com.facebook.widget.FacebookDialog;
 
-import java.util.HashMap;
-import java.util.List;
-
-public class MainPage extends SherlockListActivity {
+public class MainPage extends SherlockFragmentActivity {
 
     public static AmazonClientManager clientManager = null;
+    protected UiLifecycleHelper uiHelper;
 
-    protected List<String> itemNames;
-    protected MySimpleArrayAdapter adapter;
-    private UiLifecycleHelper uiHelper;
-
+    private String[] categoryTitles;
+    private DrawerLayout mDrawerLayout;
+    private ListView mDrawerList;
+    private ActionBarDrawerToggle mDrawerToggle;
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        clientManager = new AmazonClientManager(getSharedPreferences("speakeasySDB", Context.MODE_PRIVATE));
         uiHelper = new UiLifecycleHelper(this, null);
         uiHelper.onCreate(savedInstanceState);
+        setTitle("Main Feed");
         setContentView(R.layout.mainpage);
+        getSupportFragmentManager().beginTransaction().add(R.id.content_frame, new MainPageListFragment()).commit();
 
-        clientManager = new AmazonClientManager(getSharedPreferences("speakeasySDB", Context.MODE_PRIVATE));
+        categoryTitles = getResources().getStringArray(R.array.navigationDrawerCategories);
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        mDrawerList = (ListView) findViewById(R.id.left_drawer);
+        mDrawerToggle = new ActionBarDrawerToggle(this, mDrawerLayout,
+                R.drawable.ic_drawer, R.string.drawer_open, R.string.drawer_close) {
+
+            /** Called when a drawer has settled in a completely closed state. */
+            public void onDrawerClosed(View view) {
+                super.onDrawerClosed(view);
+                getSupportActionBar().setTitle(getTitle());
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+            }
+
+            /** Called when a drawer has settled in a completely open state. */
+            public void onDrawerOpened(View drawerView) {
+                super.onDrawerOpened(drawerView);
+                getSupportActionBar().setTitle(getTitle());
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+            }
+        };
+        // Set the drawer toggle as the DrawerListener
+        mDrawerLayout.setDrawerListener(mDrawerToggle);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setHomeButtonEnabled(true);
+
+        // Set the adapter for the list view
+        mDrawerList.setAdapter(new ArrayAdapter<String>(this,
+                android.R.layout.activity_list_item, android.R.id.text1, categoryTitles));
+        // Set the list's click listener
+        mDrawerList.setOnItemClickListener(new DrawerItemClickListener());
+
 
         //TODO: fix
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
-        itemNames = SimpleDB.getFeedItemNames(getSharedPreferences("fbInfo", Context.MODE_PRIVATE).getString("name", ""));
-
-        adapter = new MySimpleArrayAdapter(this, itemNames);
-        setListAdapter(adapter);
-
-
     }
 
-    @Override
+    /*    @Override
     public void onListItemClick(ListView l, View v, int position, long id) {
         Toast.makeText(MainPage.this, "Selected " + position, Toast.LENGTH_SHORT).show();
+    }*/
+
+    /* Called whenever we call invalidateOptionsMenu() */
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        // If the nav drawer is open, hide action items related to the content view
+        boolean drawerOpen = mDrawerLayout.isDrawerOpen(mDrawerList);
+        menu.findItem(R.id.search).setVisible(!drawerOpen);
+        menu.findItem(R.id.home).setVisible(!drawerOpen);
+
+        return super.onPrepareOptionsMenu(menu);
     }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -66,9 +106,18 @@ public class MainPage extends SherlockListActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle item selection
+
         switch (item.getItemId()) {
+            case android.R.id.home:
+                if (mDrawerLayout.isDrawerOpen(mDrawerList)) {
+                    mDrawerLayout.closeDrawer(mDrawerList);
+                } else {
+                    mDrawerLayout.openDrawer(mDrawerList);
+                }
+                return true;
+
             case R.id.search:
-                onSearchRequested();
+                Toast.makeText(MainPage.this, "Searched", Toast.LENGTH_SHORT).show();
                 return true;
             case R.id.home:
                 Intent i = new Intent(MainPage.this, HomePage.class);
@@ -77,6 +126,19 @@ public class MainPage extends SherlockListActivity {
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        // Sync the toggle state after onRestoreInstanceState has occurred.
+        mDrawerToggle.syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        mDrawerToggle.onConfigurationChanged(newConfig);
     }
 
 
@@ -123,119 +185,60 @@ public class MainPage extends SherlockListActivity {
         uiHelper.onDestroy();
     }
 
-    public class MySimpleArrayAdapter extends ArrayAdapter<String> {
-        private final Context context;
-        private List<String> quoteItemNames;
-
-        public MySimpleArrayAdapter(Context context, List<String> values) {
-            super(context, R.layout.main_item_view, values);
-            this.context = context;
-            this.quoteItemNames = values;
-        }
-
+    private class DrawerItemClickListener implements ListView.OnItemClickListener {
         @Override
-        public void notifyDataSetChanged() {
-            super.notifyDataSetChanged();
-        }
-
-        @Override
-        public void add(String object) {
-            final Object mLock = new Object();
-            synchronized (mLock) {
-                if (quoteItemNames == null) {
-                    quoteItemNames.add(object);
-                } else {
-                    quoteItemNames.add(0, object);
-                }
-            }
-        }
-
-        @Override
-        public void remove(String object) {
-            super.remove(object);
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            LayoutInflater inflater = (LayoutInflater) context
-                    .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            final View rowView = inflater.inflate(R.layout.main_item_view, parent, false);
-            final TextView fbName = (TextView) rowView.findViewById(R.id.mainFBName);
-            final TextView quoteText = (TextView) rowView.findViewById(R.id.mainItemText);
-            TextView quoteAuthor = (TextView) rowView.findViewById(R.id.mainItemAuthor);
-            ImageView fbShare = (ImageView) rowView.findViewById(R.id.mainFBshare);
-            ImageView follow = (ImageView) rowView.findViewById(R.id.mainFollow);
-
-            final Button fav = (Button) rowView.findViewById(R.id.mainFavorite);
-
-            HashMap<String, String> attrMap = SimpleDB.getAttributesForItem("Quotes", quoteItemNames.get(position));
-            fbName.setText(attrMap.get("fbName"));
-            quoteAuthor.setText(attrMap.get("author"));
-            quoteText.setText(attrMap.get("quoteText"));
-            fav.setText(attrMap.get("favorites"));
-
-            final SharedPreferences prefs = getSharedPreferences("fbInfo", Context.MODE_PRIVATE);
-
-            final String nameSpaceless = prefs.getString("name", "").replace(" ", "");
-            if (!prefs.getBoolean(nameSpaceless + "FavoritesCreated", false)) {
-                SimpleDB.createDomain(nameSpaceless + "Favorites");
-                prefs.edit().putBoolean(nameSpaceless + "FavoritesCreated", true).commit();
-            }
-
-            final String timestamp = attrMap.get("timestamp");
-            final String postID = fbName.getText().toString().replace(" ", "") + timestamp;
-
-            SelectRequest selectRequest = new SelectRequest("select * from " + nameSpaceless + "Favorites" + " where postID = '" + postID + "'").withConsistentRead(true);
-            final List<Item> items = clientManager.sdb().select(selectRequest).getItems();
-            if (items.size() == 1)
-                fav.setBackground(rowView.getResources().getDrawable(R.drawable.redheart));
-            else fav.setBackground(rowView.getResources().getDrawable(R.drawable.greyheart));
-            String n = SimpleDB.getAttributesForItem(nameSpaceless + "Favorites", quoteItemNames.get(position)).get("favorites");
-            final int numFavs;
-            if (n == null) numFavs = 0;
-            else numFavs = Integer.parseInt(n);
-            //fav.setText(numFavs + "");
-
-            fav.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    int numFavs = Integer.parseInt(fav.getText().toString());
-                    if (items.size() == 1) {
-                        SimpleDB.deleteItem(nameSpaceless + "Favorites", postID);
-                        HashMap<String, String> newFavs = new HashMap<String, String>();
-                        newFavs.put("favorites", "" + (numFavs - 1));
-                        //fav.setText("" + numFavs);
-                        SimpleDB.updateAttributesForItem("Quotes", postID, newFavs);
-                        adapter.notifyDataSetChanged();
-                    } else if (items.size() == 0) {
-                        SimpleDB.createItem("Quotes", postID);
-                        HashMap<String, String> newFavs = new HashMap<String, String>();
-                        newFavs.put("favorites", "" + (numFavs + 1));
-                        //fav.setText("" + numFavs);
-                        SimpleDB.updateAttributesForItem("Quotes", postID, newFavs);
-                        SimpleDB.addToFavoriteTable(postID, nameSpaceless);
-                        adapter.notifyDataSetChanged();
-
-                    }
-
-                }
-            });
-
-            fbShare.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    FBUtil.shareToFB(getApplicationContext(), MainPage.this, quoteText.getText().toString(), uiHelper);
-                }
-            });
-
-            follow.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-
-                }
-            });
-
-            return rowView;
+        public void onItemClick(AdapterView parent, View view, int position, long id) {
+            selectItem(position);
         }
     }
+
+    /**
+     * Swaps fragments in the main content view
+     */
+    private void selectItem(int position) {
+        android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
+        android.support.v4.app.FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        Fragment fragment = null;
+        // Create a new fragment and specify the feed to show based on position
+        switch (position) {
+            case 0:
+                fragment = new MainPageListFragment();
+                fragmentTransaction.replace(R.id.content_frame, fragment);
+                fragmentTransaction.addToBackStack(null).commit();                break;
+            case 1:
+                Toast.makeText(this, "Following not yet implemented", Toast.LENGTH_SHORT).show();
+                break;
+            case 2:
+                fragment = new AdviceFeedFragment();
+                fragmentTransaction.replace(R.id.content_frame, fragment);
+                fragmentTransaction.addToBackStack(null).commit();
+                break;
+            case 3:
+                fragment = new FunnyFeedFragment();
+                fragmentTransaction.replace(R.id.content_frame, fragment);
+                fragmentTransaction.addToBackStack(null).commit();
+                break;
+            case 4:
+                fragment = new InspirationalFeedFragment();
+                fragmentTransaction.replace(R.id.content_frame, fragment);
+                fragmentTransaction.addToBackStack(null).commit();
+                break;
+            case 5:
+                fragment = new LoveFeedFragment();
+                fragmentTransaction.replace(R.id.content_frame, fragment);
+                fragmentTransaction.addToBackStack(null).commit();
+                break;
+            case 6:
+                fragment = new MovieFeedFragment();
+                fragmentTransaction.replace(R.id.content_frame, fragment);
+                fragmentTransaction.addToBackStack(null).commit();
+                break;
+        }
+
+        // Highlight the selected item, update the title, and close the drawer
+        mDrawerList.setItemChecked(position, true);
+        //getSupportActionBar().setTitle(categoryTitles[position] + "Quotes");
+        mDrawerLayout.closeDrawer(mDrawerList);
+    }
+
 }
